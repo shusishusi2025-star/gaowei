@@ -54,6 +54,8 @@ export default function CustomerStorefrontPreview() {
   const [headline, setHeadline] = useState('☕ Tyson Cafe · 经典美式/手作拿铁特惠');
   const [company, setCompany] = useState('Tyson Cafe');
   const [industryId, setIndustryId] = useState('catering');
+  const [tenantStatus, setTenantStatus] = useState<'active' | 'suspended'>('active');
+  const [isStoreOnline, setIsStoreOnline] = useState<boolean>(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [customerCart, setCustomerCart] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'home' | 'menu' | 'cart' | 'success'>('home');
@@ -108,6 +110,8 @@ export default function CustomerStorefrontPreview() {
         if (data.companySlogan) setHeadline(data.companySlogan);
         if (data.storeTheme) setTheme(data.storeTheme);
         if (data.industryId) setIndustryId(data.industryId);
+        if (data.status) setTenantStatus(data.status);
+        if (data.isStoreOnline !== undefined) setIsStoreOnline(data.isStoreOnline);
       }
     }, (error) => {
       console.warn("Real-time preview tenant sync failed (falling back): ", error);
@@ -353,8 +357,32 @@ export default function CustomerStorefrontPreview() {
             </div>
 
             {/* Generated Shop Website Body */}
-            <div className={`p-6 min-h-[520px] max-h-[580px] overflow-y-auto custom-scrollbar flex flex-col ${currentStyle.bg} ${currentStyle.text}`}>
+            <div className={`p-6 min-h-[520px] max-h-[580px] overflow-y-auto custom-scrollbar flex flex-col relative ${currentStyle.bg} ${currentStyle.text}`}>
               
+              {tenantStatus === 'suspended' ? (
+                <div className="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-8 text-center backdrop-blur-sm">
+                  <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 text-2xl mb-4 animate-bounce">
+                    🔒
+                  </div>
+                  <h3 className="text-base font-bold text-white font-display">该商营企业主脑实例已被超级总平台安全挂起</h3>
+                  <p className="text-xs text-zinc-450 mt-2 max-w-sm font-sans leading-relaxed">
+                    因地缘合规升级检查、或多租户账期欠费限制，该商户目前进入锁定状态。如需开通，请使用 Super SaaS 平台管理员账号重予授信解锁。
+                  </p>
+                  <p className="text-[10px] text-zinc-500 font-mono mt-4">TENANT_ID: {localStorage.getItem('preview_tenant_id') || 'default_tenant'} • STATUS: GP_SUSPENDED</p>
+                </div>
+              ) : !isStoreOnline ? (
+                <div className="absolute inset-0 bg-neutral-950/90 z-50 flex flex-col items-center justify-center p-8 text-center backdrop-blur-sm">
+                  <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-2xl mb-4">
+                    🌙
+                  </div>
+                  <h3 className="text-base font-bold text-zinc-100 font-display">店铺今日已下线 / 临时打烊</h3>
+                  <p className="text-xs text-zinc-455 mt-2 max-w-sm font-sans leading-relaxed">
+                    本商户店铺目前处于临时休整下线状态。经营人员可以在商家主控大盘顶部或基础设置一键“在线营业”恢复前台预览！
+                  </p>
+                  <p className="text-[10px] text-zinc-500 font-mono mt-4">STORE_STATUS: OFFLINE</p>
+                </div>
+              ) : null}
+
               {/* Web Header/Navigation bar */}
               <nav className="flex justify-between items-center pb-5 border-b border-zinc-200/10">
                 <div className="flex items-center space-x-2">
@@ -529,6 +557,30 @@ export default function CustomerStorefrontPreview() {
               {/* Display page screen */}
               <div className={`flex-1 flex flex-col relative h-full pt-6 overflow-hidden ${currentStyle.bg} ${currentStyle.text}`}>
                 
+                {tenantStatus === 'suspended' ? (
+                  <div className="absolute inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-4 text-center backdrop-blur-sm">
+                    <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 text-lg mb-3 animate-bounce">
+                      🔒
+                    </div>
+                    <h3 className="text-xs font-bold text-white font-display">系统已被挂起</h3>
+                    <p className="text-[10px] text-zinc-400 mt-1 max-w-[200px] font-sans leading-relaxed">
+                      该商户因合规审计或欠费处于挂起锁定状态。请联系 SaaS 管理员。
+                    </p>
+                    <span className="text-[8px] text-zinc-500 font-mono mt-3">STATUS: GP_SUSPENDED</span>
+                  </div>
+                ) : !isStoreOnline ? (
+                  <div className="absolute inset-0 bg-neutral-950/95 z-50 flex flex-col items-center justify-center p-4 text-center backdrop-blur-sm">
+                    <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-lg mb-3">
+                      🌙
+                    </div>
+                    <h3 className="text-xs font-bold text-zinc-100 font-display">店铺整理打烊中</h3>
+                    <p className="text-[10px] text-zinc-400 mt-1 max-w-[200px] font-sans leading-relaxed">
+                      店铺临时休假进行日常整改中。经营团队可在工作区随时一键“起草开店”恢复线上营业！
+                    </p>
+                    <span className="text-[8px] text-zinc-500 font-mono mt-3">STORE_STATUS: OFFLINE</span>
+                  </div>
+                ) : null}
+
                 {/* Scrollable mini content viewport */}
                 <div className="flex-1 overflow-y-auto px-3.5 pb-10 pt-2 custom-scrollbar flex flex-col min-h-0 text-left">
                   

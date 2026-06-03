@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, Users, Flame, RefreshCw, BarChart2, ShieldCheck, Database, Key, LayoutGrid, Award, Sliders, PlayCircle, Settings, Mail, ArrowLeft, Trash2, SlidersHorizontal, Layers, Activity, Brain, Link, Check, Plus, Search, FileText, Cpu
 } from 'lucide-react';
+import { db, auth } from '../services/firebase';
+import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 
 interface ShopInstance {
   id: string;
@@ -433,6 +435,51 @@ export default function PlatformAdminView({
     { id: 'sh2', name: '摩登餐饮 AI 有限公司', industry: 'catering', founderEmail: 'catering_master@gmail.com', planLevel: 'Trial', dailyTokens: 15000, cpuQuota: '1.0 Cores', totalSalesSimulated: 10450.0, status: 'active' }
   ]);
 
+  useEffect(() => {
+    let active = true;
+    const fetchRealTenants = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'tenants'));
+        if (!active) return;
+        
+        const realShops: ShopInstance[] = [];
+        querySnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          realShops.push({
+            id: docSnap.id,
+            name: data.companyName || data.name || '摩登企业 AI 有限公司',
+            industry: data.industry || 'fashion',
+            founderEmail: data.userEmail || data.email || 'operator@modaui.com',
+            planLevel: data.planLevel || 'Trial',
+            dailyTokens: data.dailyTokens || Math.floor(Math.random() * 20000) + 10000,
+            cpuQuota: data.cpuQuota || '1.0 Cores',
+            totalSalesSimulated: data.sales || data.totalSales || 0,
+            status: data.status || 'active'
+          });
+        });
+        
+        if (realShops.length > 0) {
+          // Merge real registered shops with defaults to ensure fully populated UI
+          setShops(prev => {
+            const merged = [...realShops];
+            prev.forEach(d => {
+              if (!merged.some(m => m.id === d.id || m.name === d.name)) {
+                merged.push(d);
+              }
+            });
+            return merged;
+          });
+        }
+      } catch (e) {
+        console.error("Error fetching live tenants in PlatformAdminView:", e);
+      }
+    };
+    fetchRealTenants();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const handleAuditDiagnostics = () => {
     setSystemState('auditing');
     setTestResult('安全扫描诊断已下发底层组件和文件桥中。');
@@ -442,16 +489,26 @@ export default function PlatformAdminView({
     }, 1500);
   };
 
-  const handleToggleShopStatus = (id: string) => {
+  const handleToggleShopStatus = async (id: string) => {
+    const targetShop = shops.find(s => s.id === id);
+    if (!targetShop) return;
+    const nextStatus = targetShop.status === 'active' ? 'suspended' : 'active';
+
     setShops(prev => prev.map(s => {
       if (s.id === id) {
         return {
           ...s,
-          status: s.status === 'active' ? 'suspended' : 'active'
+          status: nextStatus
         };
       }
       return s;
     }));
+
+    try {
+      await setDoc(doc(db, 'tenants', id), { status: nextStatus }, { merge: true });
+    } catch (e) {
+      console.error("Error setting tenant status in Firestore: ", e);
+    }
   };
 
   const modulesChecklist = [

@@ -6,7 +6,9 @@ import {
   signInWithPopup, 
   GoogleAuthProvider, 
   signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword 
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  sendEmailVerification
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -18,7 +20,7 @@ interface GoogleLoginModalProps {
 
 export default function GoogleLoginModal({ userEmail = 'guest@gmail.com', onSuccess, onCancel }: GoogleLoginModalProps) {
   const [activeTab, setActiveTab] = useState<'google' | 'email'>('google');
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [typedEmail, setTypedEmail] = useState(userEmail === 'guest@gmail.com' || userEmail === 'founder@gmail.com' ? '' : userEmail);
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -59,6 +61,32 @@ export default function GoogleLoginModal({ userEmail = 'guest@gmail.com', onSucc
       if (typeof window !== 'undefined' && window.parent !== window) {
         setDebugTip("iFrame沙箱环境检测：登录窗口可能会被浏览器阻止弹出。若无法调用，请在右上角‘在新标签页打开’独立运行该应用，或切换到[邮箱注册通道]建档。");
       }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 1.5. Real Forgot Password Reset
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!typedEmail) {
+      setErrorMsg("请先输入电子邮箱以获取重置秘钥链接");
+      return;
+    }
+    setIsLoading(true);
+    setErrorMsg(null);
+    setDebugTip(null);
+    try {
+      await sendPasswordResetEmail(auth, typedEmail);
+      setDebugTip("✔ 密码重置指令接收完毕！系统已向您的邮箱派发了一个安全重签链接，请前往您的邮箱核验并完成设定。之后即可使用新密码登录。");
+      setAuthMode('signin');
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      let friendlyErr = error.message;
+      if (error.code === 'auth/user-not-found') {
+        friendlyErr = "未找到持有此邮箱的安全档案记录。";
+      }
+      setErrorMsg(friendlyErr);
     } finally {
       setIsLoading(false);
     }
@@ -232,7 +260,48 @@ export default function GoogleLoginModal({ userEmail = 'guest@gmail.com', onSucc
           )}
 
           {/* B: Real Email System */}
-          {activeTab === 'email' && (
+          {activeTab === 'email' && authMode === 'forgot' && (
+            <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-mono text-[#8B949E] uppercase tracking-wider">重置账号邮箱 / Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8B949E]" />
+                  <input
+                    type="email"
+                    required
+                    value={typedEmail}
+                    onChange={(e) => setTypedEmail(e.target.value)}
+                    className="w-full bg-black border border-[#2F3336] focus:border-[#1D9BF0] rounded-lg py-2.5 pl-10 pr-4 text-xs text-white focus:outline-none transition-colors font-mono"
+                    placeholder="请输入核验用的真实邮件编码..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] pt-1">
+                <span className="text-zinc-500 font-sans">突然记起来了？</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signin');
+                    setErrorMsg(null);
+                  }}
+                  className="text-[#1D9BF0] font-bold hover:text-sky-300 transition-colors animate-pulse"
+                >
+                  返回登录
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-[#1D9BF0] hover:bg-[#38BDF8] active:bg-[#1A8CD8] text-white text-xs font-bold py-3 rounded-lg transition-colors flex items-center justify-center space-x-2 border border-[#1D9BF0]/25 cursor-pointer font-sans"
+              >
+                {isLoading ? "重设秘钥派送中..." : "发送秘钥重置链接"}
+              </button>
+            </form>
+          )}
+
+          {activeTab === 'email' && authMode !== 'forgot' && (
             <form onSubmit={handleEmailAuthSubmit} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-mono text-[#8B949E] uppercase tracking-wider">电子邮箱 / Email</label>
@@ -266,19 +335,33 @@ export default function GoogleLoginModal({ userEmail = 'guest@gmail.com', onSucc
 
               {/* Mode switch helper buttons */}
               <div className="flex items-center justify-between text-[11px] pt-1">
-                <span className="text-zinc-500 font-sans">
-                  {authMode === 'signup' ? '已有注册账号？' : '需要新账号？'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode(authMode === 'signup' ? 'signin' : 'signup');
-                    setErrorMsg(null);
-                  }}
-                  className="text-[#1D9BF0] font-bold hover:text-sky-300 transition-colors"
-                >
-                  {authMode === 'signup' ? '切换为 立即登录' : '切换为 极速建档注册'}
-                </button>
+                <div className="flex items-center space-x-2">
+                  <span className="text-zinc-500 font-sans">
+                    {authMode === 'signup' ? '已有注册账号？' : '需要新账号？'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode(authMode === 'signup' ? 'signin' : 'signup');
+                      setErrorMsg(null);
+                    }}
+                    className="text-[#1D9BF0] font-bold hover:text-sky-300 transition-colors"
+                  >
+                    {authMode === 'signup' ? '立即登录' : '极速建档注册'}
+                  </button>
+                </div>
+                {authMode === 'signin' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('forgot');
+                      setErrorMsg(null);
+                    }}
+                    className="text-zinc-400 hover:text-zinc-100 transition-colors font-medium font-sans"
+                  >
+                    忘记密码？
+                  </button>
+                )}
               </div>
 
               <button
