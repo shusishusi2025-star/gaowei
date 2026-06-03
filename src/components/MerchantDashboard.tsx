@@ -6,7 +6,8 @@ import {
   Sliders, Cpu, Globe, Database, Key, RefreshCw, Layers, Activity, Server, Save, 
   ChevronDown, BookOpen, Package, Eye, LayoutGrid, Award, MessageSquare, LineChart, Settings, PlayCircle,
   Mic, Image, Volume2, X, Upload, FileImage, Check, Copy, ChevronRight, Search, Plus,
-  Cloud, CloudUpload, CloudDownload, Briefcase, CreditCard, History
+  Cloud, CloudUpload, CloudDownload, Briefcase, CreditCard, History,
+  Truck, Bell, Shield, DollarSign, UserCheck
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -22,6 +23,7 @@ import {
   Cell
 } from 'recharts';
 import { IndustryData, OperatingStrategy, TeamMember, TaskLog, ChatMessage } from '../types';
+import MerchantSettingsView from './MerchantSettingsView';
 import { MOCK_LOGS_POOL } from '../data';
 import { db, auth, handleFirestoreError, OperationType } from '../services/firebase';
 import { 
@@ -365,6 +367,55 @@ export default function MerchantDashboard({
   const [marketingSubTab, setMarketingSubTab] = useState<'coupon' | 'campaign' | 'email' | 'sms' | 'ai'>('coupon');
   const [analyticsSubTab, setAnalyticsSubTab] = useState<'sales' | 'customer' | 'product' | 'marketing' | 'realtime'>('sales');
 
+  // Sub-tab under Settings (⚙️ 设置)
+  const [settingsSubTab, setSettingsSubTab] = useState<'general' | 'billing' | 'users' | 'payments' | 'customers' | 'logistics' | 'marketing' | 'app' | 'notifications' | 'languages' | 'privacy'>('general');
+  
+  // Custom states matching all the settings fields
+  const [merchantIntro, setMerchantIntro] = useState('');
+  const [merchantHours, setMerchantHours] = useState('09:00 - 22:00');
+  
+  // Users & Permissions
+  const [operatorsList, setOperatorsList] = useState<any[]>([
+    { email: 'founder@modaui.ai', name: '创始人王总', role: 'founder', status: 'active' },
+    { email: 'manager@modaui.ai', name: '运营总监李总', role: 'manager', status: 'active' },
+    { email: 'staff@modaui.ai', name: '店面小助手', role: 'staff', status: 'active' }
+  ]);
+  const [newOperatorEmail, setNewOperatorEmail] = useState('');
+  const [newOperatorName, setNewOperatorName] = useState('');
+  const [newOperatorRole, setNewOperatorRole] = useState<'founder' | 'manager' | 'staff' | 'customer'>('staff');
+
+  // Payments
+  const [paymentGateway, setPaymentGateway] = useState<'stripe' | 'alipay' | 'both'>('stripe');
+  const [paymentStripePub, setPaymentStripePub] = useState('pk_live_51Pq3S0H...');
+  const [paymentStripeSec, setPaymentStripeSec] = useState('sk_live_51Pq3S0H...');
+  const [paymentAlipayId, setPaymentAlipayId] = useState('20210021394852...');
+  const [paymentAlipayPriv, setPaymentAlipayPriv] = useState('MIIEvgIBADANBgkqhkiG9w0BAQEFASCBKj... (加密私钥)');
+
+  // Customers (CRM) Configs
+  const [rewardPointRate, setRewardPointRate] = useState(1);
+  const [vipThreshold, setVipThreshold] = useState(1000);
+  const [welcomeMessage, setWelcomeMessage] = useState('您好！欢迎光临本智能美学旗舰店，24小时 AI 主脑将为您竭诚服务。');
+
+  // Logistics
+  const [logisticsProvider, setLogisticsProvider] = useState('sf_air');
+  const [logisticsApiKey, setLogisticsApiKey] = useState('SF_API_KEY_36D0EEE30473...');
+  const [shippingBaseFee, setShippingBaseFee] = useState(12);
+
+  // Notifications
+  const [notifyOnNewOrder, setNotifyOnNewOrder] = useState(true);
+  const [notifyOnRefund, setNotifyOnRefund] = useState(true);
+  const [notifySmsPhone, setNotifySmsPhone] = useState('13800138000');
+  const [notifyEmail, setNotifyEmail] = useState('alert@modaui.ai');
+
+  // Language
+  const [storeLanguage, setStoreLanguage] = useState<'zh' | 'en' | 'ja'>('zh');
+  const [autoTranslateAi, setAutoTranslateAi] = useState(true);
+
+  // Privacy & policies
+  const [refundPolicyText, setRefundPolicyText] = useState('自售出之日起，商品完整无损、票据齐全支持 7 天无理由极速货退');
+  const [privacyConsentEnabled, setPrivacyConsentEnabled] = useState(true);
+  const [dataSecrecyAgreed, setDataSecrecyAgreed] = useState(true);
+
   // Extra sub-navigation database fields for store overview and other parameters
   const [isStoreOnline, setIsStoreOnline] = useState(true);
   const [customDomainName, setCustomDomainName] = useState('');
@@ -373,6 +424,7 @@ export default function MerchantDashboard({
   const [seoHtmlTitle, setSeoHtmlTitle] = useState('');
   const [seoMetaDesc, setSeoMetaDesc] = useState('');
   const [seoKeywords, setSeoKeywords] = useState('');
+  const [brandStyle, setBrandStyle] = useState('modern');
 
   // Auxiliary database lists loaded dynamically or seeded
   const [categoriesList, setCategoriesList] = useState<string[]>(['爆款推荐', '本季新品', '限时折扣', '招牌单品']);
@@ -424,6 +476,22 @@ export default function MerchantDashboard({
   const [newSkuVariantName, setNewSkuVariantName] = useState('');
   const [newSkuVariantPrice, setNewSkuVariantPrice] = useState('');
   const [newSkuVariantStock, setNewSkuVariantStock] = useState('');
+
+  // SPU & SKU Quick specs addition and Toasts framework
+  const [selectedQuickSizes, setSelectedQuickSizes] = useState<string[]>([]);
+  const [selectedQuickColors, setSelectedQuickColors] = useState<string[]>([]);
+  const [bulkSkuPrice, setBulkSkuPrice] = useState('199');
+  const [bulkSkuStock, setBulkSkuStock] = useState('100');
+
+  // Custom premium Toast array
+  const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'info' | 'error' }[]>([]);
+  const triggerToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
+    const id = Math.random().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3500);
+  };
 
   const [b2bCustomers, setB2bCustomers] = useState<any[]>([
     { id: 'b2b-01', company: '望京SOHO联合办公集团', contact: '沈总', creditLimit: 50000, usedCredit: 12000, termDays: 30 },
@@ -532,6 +600,32 @@ export default function MerchantDashboard({
         if (data.seoHtmlTitle !== undefined) setSeoHtmlTitle(data.seoHtmlTitle);
         if (data.seoMetaDesc !== undefined) setSeoMetaDesc(data.seoMetaDesc);
         if (data.seoKeywords !== undefined) setSeoKeywords(data.seoKeywords);
+        if (data.brandStyle !== undefined) setBrandStyle(data.brandStyle);
+
+        // Map settings fields
+        if (data.merchantIntro !== undefined) setMerchantIntro(data.merchantIntro);
+        if (data.merchantHours !== undefined) setMerchantHours(data.merchantHours);
+        if (data.operatorsList !== undefined) setOperatorsList(data.operatorsList);
+        if (data.paymentGateway !== undefined) setPaymentGateway(data.paymentGateway);
+        if (data.paymentStripePub !== undefined) setPaymentStripePub(data.paymentStripePub);
+        if (data.paymentStripeSec !== undefined) setPaymentStripeSec(data.paymentStripeSec);
+        if (data.paymentAlipayId !== undefined) setPaymentAlipayId(data.paymentAlipayId);
+        if (data.paymentAlipayPriv !== undefined) setPaymentAlipayPriv(data.paymentAlipayPriv);
+        if (data.rewardPointRate !== undefined) setRewardPointRate(data.rewardPointRate);
+        if (data.vipThreshold !== undefined) setVipThreshold(data.vipThreshold);
+        if (data.welcomeMessage !== undefined) setWelcomeMessage(data.welcomeMessage);
+        if (data.logisticsProvider !== undefined) setLogisticsProvider(data.logisticsProvider);
+        if (data.logisticsApiKey !== undefined) setLogisticsApiKey(data.logisticsApiKey);
+        if (data.shippingBaseFee !== undefined) setShippingBaseFee(data.shippingBaseFee);
+        if (data.notifyOnNewOrder !== undefined) setNotifyOnNewOrder(data.notifyOnNewOrder);
+        if (data.notifyOnRefund !== undefined) setNotifyOnRefund(data.notifyOnRefund);
+        if (data.notifySmsPhone !== undefined) setNotifySmsPhone(data.notifySmsPhone);
+        if (data.notifyEmail !== undefined) setNotifyEmail(data.notifyEmail);
+        if (data.storeLanguage !== undefined) setStoreLanguage(data.storeLanguage);
+        if (data.autoTranslateAi !== undefined) setAutoTranslateAi(data.autoTranslateAi);
+        if (data.refundPolicyText !== undefined) setRefundPolicyText(data.refundPolicyText);
+        if (data.privacyConsentEnabled !== undefined) setPrivacyConsentEnabled(data.privacyConsentEnabled);
+        if (data.dataSecrecyAgreed !== undefined) setDataSecrecyAgreed(data.dataSecrecyAgreed);
       } else {
         // Build Real Tenant Profile / Initialize (Sandbox SaaS onboarding setup - Merchant Creation)
         try {
@@ -955,6 +1049,47 @@ export default function MerchantDashboard({
       setSelectedStaff(staffMember);
     }
   }, [activeMenu]);
+
+  // Load SPU SKUs dynamically from Firestore when selected SPU changes
+  useEffect(() => {
+    if (!selectedProductSkuUid) {
+      return;
+    }
+    const q = collection(db, 'tenants', tenantId, 'industries', industry.id, 'products', selectedProductSkuUid, 'skus');
+    const unsubscribeSkus = onSnapshot(q, (snapshot) => {
+      const list: any[] = [];
+      snapshot.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() });
+      });
+      // Fallback seeds if list is empty
+      if (list.length === 0) {
+        const matchingProduct = productsList.find(p => p.id === selectedProductSkuUid);
+        if (matchingProduct && matchingProduct.specs && matchingProduct.specs.sizes) {
+          const defaults = matchingProduct.specs.sizes.map((s: string, idx: number) => {
+            const clean = s.replace(/¥/g, '').trim();
+            const parts = clean.split(/\s+/);
+            const name = parts[0] || '标准子版';
+            const price = parseFloat(parts[1]) || matchingProduct.price;
+            return {
+              id: `default-${idx}`,
+              name: `子规格: ${name}`,
+              price: price,
+              stock: matchingProduct.stock || 100,
+              isDefaultSeed: true
+            };
+          });
+          setSkuVariants(defaults);
+        } else {
+          setSkuVariants([]);
+        }
+      } else {
+        setSkuVariants(list);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `tenants/${tenantId}/industries/${industry.id}/products/${selectedProductSkuUid}/skus`);
+    });
+    return () => unsubscribeSkus();
+  }, [selectedProductSkuUid, tenantId, industry.id, productsList]);
 
   // ==========================================
   // GOOGLE DRIVE INTEGRATION & OPERATIONS
@@ -4344,399 +4479,549 @@ const handleRestoreFromDrive = async () => {
                 <>
                   {productSubTab === 'list' && (
                     <div className="space-y-6 animate-fadeIn">
-                  {/* Item dev box form */}
-                  <div className="bg-[#09090B] border border-[#2F3336] p-5 rounded-xl space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Sparkles className="w-4 h-4 text-[#1D9BF0]" />
-                        <h3 className="text-xs font-mono uppercase tracking-wider text-[#8B949E]">发布商品</h3>
-                      </div>
-                      <span className="text-[10px] bg-[#111] text-zinc-400 font-mono border border-[#2F3336] px-2 py-0.5 rounded-full">极速上架</span>
-                    </div>
+                      {/* SPU Form */}
+                      <div className="bg-[#09090B] border border-[#2F3336] p-6 rounded-xl space-y-5 shadow-lg relative overflow-hidden group">
+                        {/* Decorative background pulse glow */}
+                        <div className="absolute top-0 right-0 w-36 h-36 bg-[#1D9BF0]/5 blur-3xl rounded-full group-hover:scale-125 transition-all duration-700 pointer-events-none" />
+                        
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2F3336]/60 pb-3">
+                          <div className="flex items-center space-x-2.5">
+                            <div className="p-1.5 bg-[#1D9BF0]/10 rounded-lg border border-[#1D9BF0]/25">
+                              <Sparkles className="w-4 h-4 text-[#1D9BF0] animate-pulse" />
+                            </div>
+                            <div>
+                              <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-white">SPU 极致极速上架通道</h3>
+                              <p className="text-[10px] text-zinc-500 mt-0.5">多线程并向同步至云端 Firestore 数据流仓</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                            <span className="text-[10px] bg-emerald-500/10 text-emerald-400 font-mono border border-emerald-500/20 px-2.5 py-0.5 rounded-full flex items-center space-x-1">
+                              <span>● LIVE CLOUD RECEPTIVE</span>
+                            </span>
+                          </div>
+                        </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-mono text-[#8B949E] uppercase tracking-wider block">商品名称</label>
-                        <input 
-                          type="text"
-                          value={newProductInput}
-                          onChange={(e) => setNewProductInput(e.target.value)}
-                          placeholder={industry.id === 'catering' ? "例如: 飘香咖喱牛腩捞面" : industry.id === 'retail' ? "例如: 户外防水双拉链收纳盒" : "例如: 港风冷淡灰修身上衣"}
-                          className="w-full bg-black border border-[#2F3336] focus:border-[#1D9BF0] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none"
-                        />
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-mono text-[#8B949E] uppercase tracking-wider block">在售单价</label>
-                        <input 
-                          type="number"
-                          min="1"
-                          step="0.01"
-                          value={newProductPriceInput}
-                          onChange={(e) => setNewProductPriceInput(e.target.value)}
-                          placeholder="智能定价 (数字)"
-                          className="w-full bg-black border border-[#2F3336] focus:border-[#1D9BF0] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none placeholder:text-gray-500 font-mono"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-mono text-[#8B949E] uppercase tracking-wider block">常态库存</label>
-                        <input 
-                          type="number"
-                          min="0"
-                          value={newProductStockInput}
-                          onChange={(e) => setNewProductStockInput(e.target.value)}
-                          placeholder="请输入初始库存"
-                          className="w-full bg-black border border-[#2F3336] focus:border-[#1D9BF0] rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none placeholder:text-gray-500 font-mono"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Emoji Select Grid */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-mono text-[#8B949E] uppercase tracking-wider block">选择图标</label>
-                      <div className="flex flex-wrap gap-1.5 p-2 bg-black/40 border border-[#2F3336] rounded-lg">
-                        {[
-                          '🍛', '🍖', '🍹', '🍔', '🍕', '🍰', '🍜', '🍣',
-                          '👗', '👖', '👕', '👚', '👜', '🕶', '👠', '👟',
-                          '🎒', '🌀', '☔', '📦', '🎁', '📱', '💻', '💡', '🔥'
-                        ].map((emoji) => (
-                          <button
-                            key={emoji}
-                            type="button"
-                            onClick={() => setNewProductEmojiInput(emoji)}
-                            className={`w-8 h-8 rounded text-lg flex items-center justify-center transition-all ${
-                              newProductEmojiInput === emoji
-                                ? 'bg-[#1D9BF0]/30 border border-[#1D9BF0] scale-110 shadow-sm'
-                                : 'bg-transparent border border-transparent hover:bg-zinc-800/40'
-                            }`}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap justify-end items-center gap-2 pt-2 border-t border-[#2F3336]/60">
-                      {/* Manual upload button */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const cleanedName = newProductInput.trim();
-                          if (!cleanedName) return;
-                          const finalPrice = newProductPriceInput.trim() 
-                            ? parseFloat(newProductPriceInput) 
-                            : Math.floor(Math.random() * 80 + 30);
-                          const finalStock = parseInt(newProductStockInput.trim()) || 100;
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[10.5px] font-mono font-bold text-[#8B949E] uppercase tracking-wider block">商品名称 (SPU Title)</label>
+                            <input 
+                              type="text"
+                              value={newProductInput}
+                              onChange={(e) => setNewProductInput(e.target.value)}
+                              placeholder={industry.id === 'catering' ? "例如: 飘香咖喱牛腩捞面" : industry.id === 'retail' ? "例如: 户外防水双拉链收纳盒" : "例如: 港风冷淡灰修身上衣"}
+                              className="w-full bg-black/60 border border-[#2F3336] focus:border-[#1D9BF0] focus:ring-1 focus:ring-[#1D9BF0]/30 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none transition-all placeholder:text-zinc-600 font-sans"
+                            />
+                          </div>
                           
-                          const newItemId = 'p' + (productsList.length + 1) + '-' + Date.now();
-                          const newItem = {
-                            id: newItemId,
-                            name: cleanedName,
-                            price: finalPrice,
-                            stock: finalStock,
-                            image: newProductEmojiInput,
-                            category: industry.id === 'catering' ? '咖啡' : industry.id === 'retail' ? '居家' : '外套',
-                            desc: '手动极速发布 SPU 商品',
-                            sales: 0,
-                            rating: '100%',
-                            specs: { sizes: ['标准'], labels: '手工新建' }
-                          };
+                          <div className="space-y-1">
+                            <label className="text-[10.5px] font-mono font-bold text-[#8B949E] uppercase tracking-wider block">在售单价 (Pricing ¥)</label>
+                            <input 
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={newProductPriceInput}
+                              onChange={(e) => setNewProductPriceInput(e.target.value)}
+                              placeholder="例如: 129"
+                              className="w-full bg-black/60 border border-[#2F3336] focus:border-[#1D9BF0] focus:ring-1 focus:ring-[#1D9BF0]/30 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none placeholder:text-zinc-600 font-mono text-left transition-all"
+                            />
+                          </div>
 
-                          setDoc(doc(db, 'tenants', tenantId, 'industries', industry.id, 'products', newItemId), newItem)
-                            .then(() => {
-                              setLogs((prevLogs) => [
-                                ...prevLogs,
+                          <div className="space-y-1">
+                            <label className="text-[10.5px] font-mono font-bold text-[#8B949E] uppercase tracking-wider block">常态初始库存 (Stock)</label>
+                            <input 
+                              type="number"
+                              min="0"
+                              value={newProductStockInput}
+                              onChange={(e) => setNewProductStockInput(e.target.value)}
+                              placeholder="请输入初始配发库存"
+                              className="w-full bg-black/60 border border-[#2F3336] focus:border-[#1D9BF0] focus:ring-1 focus:ring-[#1D9BF0]/30 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none placeholder:text-zinc-600 font-mono text-left transition-all"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Cost & Margin Predictor banner */}
+                        {newProductInput.trim() && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            className="bg-sky-500/5 border border-sky-500/10 p-3 rounded-lg text-xs font-mono flex items-center justify-between"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sky-400">📊</span>
+                              <span className="text-zinc-400">大单品智能推演：进货价估算 ¥{(parseFloat(newProductPriceInput) * 0.42 || 0).toFixed(2)} / 预测单客毛利率 ~58% </span>
+                            </div>
+                            <span className="text-[10px] text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded">AI推荐定价</span>
+                          </motion.div>
+                        )}
+
+                        {/* Emoji Icons Select Grid with nice hovering highlight */}
+                        <div className="space-y-1.5">
+                          <label className="text-[10.5px] font-mono font-bold text-[#8B949E] uppercase tracking-wider block">选择象征化图标 (Visual Representation ICON)</label>
+                          <div className="flex flex-wrap gap-1.5 p-2 bg-black/40 border border-[#2F3336] rounded-xl">
+                            {[
+                              '🍛', '🍖', '🍹', '🍔', '🍕', '🍰', '🍜', '🍣',
+                              '👗', '👖', '👕', '👚', '👜', '🕶', '👠', '👟',
+                              '🎒', '🌀', '☔', '📦', '🎁', '📱', '💻', '💡', '🔥'
+                            ].map((emoji) => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() => {
+                                  setNewProductEmojiInput(emoji);
+                                  triggerToast(`已选择图标 "${emoji}"`);
+                                }}
+                                className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all ${
+                                  newProductEmojiInput === emoji
+                                    ? 'bg-[#1D9BF0]/20 border border-[#1D9BF0] scale-110 shadow-md shadow-[#1D9BF0]/10 text-white font-bold'
+                                    : 'bg-zinc-900/30 border border-transparent hover:bg-zinc-800/60 hover:scale-105 text-zinc-300'
+                                }`}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Actions buttons */}
+                        <div className="flex flex-wrap justify-end items-center gap-2 pt-2 border-t border-[#2F3336]/60">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const cleanedName = newProductInput.trim();
+                              if (!cleanedName) return;
+                              const finalPrice = newProductPriceInput.trim() 
+                                ? parseFloat(newProductPriceInput) 
+                                : Math.floor(Math.random() * 80 + 30);
+                              const finalStock = parseInt(newProductStockInput.trim()) || 100;
+                              
+                              const newItemId = 'p' + (productsList.length + 1) + '-' + Date.now();
+                              const newItem = {
+                                id: newItemId,
+                                name: cleanedName,
+                                price: finalPrice,
+                                stock: finalStock,
+                                image: newProductEmojiInput,
+                                category: industry.id === 'catering' ? '咖啡' : industry.id === 'retail' ? '居家' : '外套',
+                                desc: '手动极速发布 SPU 商品',
+                                sales: 0,
+                                rating: '100%',
+                                specs: { sizes: ['标准'], labels: '手工新建' }
+                              };
+
+                              setDoc(doc(db, 'tenants', tenantId, 'industries', industry.id, 'products', newItemId), newItem)
+                                .then(() => {
+                                  setLogs((prevLogs) => [
+                                    ...prevLogs,
+                                    {
+                                      id: Math.random().toString(),
+                                      timestamp: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+                                      sender: '商户总控',
+                                      emoji: '📝',
+                                      message: `✔ 【手动极速发布】成功上架新微商城 SPU商品名：【${newItem.name}】，单价 ¥${finalPrice} 元，初始库存：${finalStock} 并同步写入 Firestore！`,
+                                      type: 'success'
+                                    }
+                                  ]);
+                                  triggerToast(`✔ 【${newItem.name}】极速发布成功！已双向同步客户端`);
+                                })
+                                .catch(err => {
+                                  triggerToast('发布商品失败，请检查数据库状态', 'error');
+                                  handleFirestoreError(err, OperationType.WRITE, 'products/' + newItemId);
+                                });
+
+                              setNewProductInput('');
+                              setNewProductPriceInput('');
+                              setNewProductStockInput('100');
+                            }}
+                            disabled={isDevelopingProduct || !newProductInput.trim()}
+                            className="bg-zinc-800 hover:bg-zinc-700 active:scale-95 transition-all py-2.5 px-5 rounded-lg text-xs font-bold text-gray-200 cursor-pointer flex items-center justify-center space-x-1.5 shrink-0 disabled:opacity-50 disabled:pointer-events-none"
+                          >
+                            <Plus className="w-3.5 h-3.5 text-[#1D9BF0]" />
+                            <span>手动发布 (Quick Save)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!newProductInput.trim()) return;
+                              setIsDevelopingProduct(true);
+                              setLogs((prev) => [
+                                ...prev,
                                 {
                                   id: Math.random().toString(),
                                   timestamp: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
-                                  sender: '商户总控',
-                                  emoji: '📝',
-                                  message: `✔ 【手动极速发布】成功上架新微商城 SPU商品名：【${newItem.name}】，单价 ¥${finalPrice} 元，初始库存：${finalStock} 并同步写入 Firestore！`,
-                                  type: 'success'
+                                  sender: 'AI商品经理',
+                                  emoji: '👗',
+                                  message: `【${selectedStaff.name}】正在抓取各大平台同款热销比值，运算物耗成本并出具定价推荐书...`,
+                                  type: 'info'
                                 }
                               ]);
-                            })
-                            .catch(err => handleFirestoreError(err, OperationType.WRITE, 'products/' + newItemId));
 
-                          setNewProductInput('');
-                          setNewProductPriceInput('');
-                          setNewProductStockInput('100');
-                        }}
-                        disabled={isDevelopingProduct || !newProductInput.trim()}
-                        className="bg-zinc-800 hover:bg-zinc-700 transition-all py-2.5 px-5 rounded-lg text-xs font-bold text-gray-200 cursor-pointer flex items-center justify-center space-x-1.5 shrink-0 disabled:opacity-50"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-[#1D9BF0]" />
-                        <span>手动发布</span>
-                      </button>
+                              setTimeout(() => {
+                                const newPrice = newProductPriceInput.trim() 
+                                  ? parseFloat(newProductPriceInput) 
+                                  : Math.floor(Math.random() * 80 + 30);
+                                const newStock = parseInt(newProductStockInput.trim()) || Math.floor(Math.random() * 200 + 100);
+                                
+                                const newItemId = 'p' + (productsList.length + 1) + '-' + Date.now();
+                                const newItem = {
+                                  id: newItemId,
+                                  name: newProductInput.trim(),
+                                  price: newPrice,
+                                  stock: newStock,
+                                  image: newProductEmojiInput,
+                                  category: industry.id === 'catering' ? '咖啡' : industry.id === 'retail' ? '居家' : '外套',
+                                  desc: 'AI 自动打样生产 SPU 商品',
+                                  sales: 0,
+                                  rating: '100%',
+                                  specs: { sizes: ['标准'], labels: 'AI严选' }
+                                };
 
-                      {/* AI build upload button */}
-                      <button
-                        onClick={() => {
-                          if (!newProductInput.trim()) return;
-                          setIsDevelopingProduct(true);
-                          setLogs((prev) => [
-                            ...prev,
-                            {
-                              id: Math.random().toString(),
-                              timestamp: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
-                              sender: 'AI商品经理',
-                              emoji: '👗',
-                              message: `【${selectedStaff.name}】正在抓取各大平台同款热销比值，运算物耗成本并出具定价推荐书...`,
-                              type: 'info'
-                            }
-                          ]);
+                                setDoc(doc(db, 'tenants', tenantId, 'industries', industry.id, 'products', newItemId), newItem)
+                                  .then(() => {
+                                    setLogs((prevLogs) => [
+                                      ...prevLogs,
+                                      {
+                                        id: Math.random().toString(),
+                                        timestamp: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+                                        sender: 'AI商品经理',
+                                        emoji: '👗',
+                                        message: `✔ [AI打样发布成功] 上架智能爆款 SPU 名：【${newItem.name}】，精细化定价为：¥${newPrice} (初始配发库存: ${newStock}件) 并同步写入 Firestore！`,
+                                        type: 'success'
+                                      }
+                                    ]);
+                                    triggerToast(`✨ 【${newItem.name}】智能打样精算发布成功！`, 'success');
+                                  })
+                                  .catch(err => {
+                                    triggerToast('AI发布失败', 'error');
+                                    handleFirestoreError(err, OperationType.WRITE, `tenants/${tenantId}/industries/${industry.id}/products/${newItemId}`);
+                                  });
 
-                          setTimeout(() => {
-                            const newPrice = newProductPriceInput.trim() 
-                              ? parseFloat(newProductPriceInput) 
-                              : Math.floor(Math.random() * 80 + 30);
-                            const newStock = parseInt(newProductStockInput.trim()) || Math.floor(Math.random() * 200 + 100);
-                            
-                            const newItemId = 'p' + (productsList.length + 1) + '-' + Date.now();
-                            const newItem = {
-                              id: newItemId,
-                              name: newProductInput.trim(),
-                              price: newPrice,
-                              stock: newStock,
-                              image: newProductEmojiInput,
-                              category: industry.id === 'catering' ? '咖啡' : industry.id === 'retail' ? '居家' : '外套',
-                              desc: 'AI 自动打样生产 SPU 商品',
-                              sales: 0,
-                              rating: '100%',
-                              specs: { sizes: ['标准'], labels: 'AI严选' }
-                            };
+                                setIsDevelopingProduct(false);
+                                setNewProductInput('');
+                                setNewProductPriceInput('');
+                                setNewProductStockInput('100');
+                              }, 1800);
+                            }}
+                            disabled={isDevelopingProduct || !newProductInput.trim()}
+                            className="bg-[#1D9BF0] hover:bg-[#38BDF8] active:scale-95 transition-all py-2.5 px-6 rounded-lg text-xs font-bold text-white cursor-pointer flex items-center justify-center space-x-1 shrink-0 disabled:opacity-50 disabled:pointer-events-none shadow-lg shadow-[#1D9BF0]/20"
+                          >
+                            {isDevelopingProduct ? (
+                              <>
+                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                <span>大物智算打样中...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>AI 智能定价发布</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
 
-                            setDoc(doc(db, 'tenants', tenantId, 'industries', industry.id, 'products', newItemId), newItem)
-                              .then(() => {
-                                setLogs((prevLogs) => [
-                                  ...prevLogs,
-                                  {
-                                    id: Math.random().toString(),
-                                    timestamp: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
-                                    sender: 'AI商品经理',
-                                    emoji: '👗',
-                                    message: `✔ [AI打样发布成功] 上架智能爆款 SPU 名：【${newItem.name}】，精细化定价为：¥${newPrice} (初始配发库存: ${newStock}件) 并同步写入 Firestore！`,
-                                    type: 'success'
-                                  }
-                                ]);
-                              })
-                              .catch(err => handleFirestoreError(err, OperationType.WRITE, `tenants/${tenantId}/industries/${industry.id}/products/${newItemId}`));
+                      {/* Active Products Tables Grid */}
+                      <div className="bg-[#09090B] border border-[#2F3336] rounded-xl overflow-hidden shadow-lg">
+                        <div className="bg-[#0d0d0f] border-b border-[#2F3336] px-5 py-4 flex flex-wrap items-center justify-between gap-2.5">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sky-400">👗</span>
+                            <span className="text-xs font-bold font-mono text-white uppercase tracking-wider">MODAUI 货权盘口及 SPU 货柜</span>
+                          </div>
+                          <div className="flex items-center space-x-3 text-[10.5px] font-mono text-zinc-400">
+                            <span>微商城在售: <strong className="text-sky-400">{productsList.length}款 SPU</strong></span>
+                            <span className="h-3 w-px bg-zinc-800"></span>
+                            <span className="text-[10px] text-zinc-500">已连桥 Cloud Run + Firestore</span>
+                          </div>
+                        </div>
 
-                            setIsDevelopingProduct(false);
-                            setNewProductInput('');
-                            setNewProductPriceInput('');
-                            setNewProductStockInput('100');
-                          }, 1800);
-                        }}
-                        disabled={isDevelopingProduct || !newProductInput.trim()}
-                        className="bg-[#1D9BF0] hover:bg-[#38BDF8] transition-all py-2.5 px-6 rounded-lg text-xs font-bold text-white cursor-pointer flex items-center justify-center space-x-1 shrink-0 disabled:opacity-50"
-                      >
-                        {isDevelopingProduct ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span>打样中...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>智能上架</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs font-sans">
+                            <thead className="bg-[#0c0c0e] text-[#8B949E] uppercase text-[9px] font-mono border-b border-[#2F3336] tracking-wider">
+                              <tr>
+                                <th className="p-4 w-16 text-center">视觉</th>
+                                <th className="p-4">商品大单品品名</th>
+                                <th className="p-4 text-right">上游进货价 (42%)</th>
+                                <th className="p-4 text-right">智能前台售价</th>
+                                <th className="p-4 text-right">安全常态盘余</th>
+                                <th className="p-4 text-right">水线预定安全度</th>
+                                <th className="p-4 text-center">操作控制中心</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#2F3336]/40">
+                              <AnimatePresence>
+                                {productsList.map((p) => {
+                                  const rawCost = (p.price * 0.42).toFixed(2);
+                                  return (
+                                    <motion.tr 
+                                      key={p.id} 
+                                      initial={{ opacity: 0, y: 10 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      exit={{ opacity: 0, scale: 0.95 }}
+                                      transition={{ duration: 0.15 }}
+                                      className="hover:bg-neutral-900/50 hover:shadow-inner transition-all group"
+                                    >
+                                      <td className="p-4 text-center text-xl select-none">{p.image}</td>
+                                      <td className="p-4 font-bold text-white group-hover:text-[#1D9BF0] transition-colors">{p.name}</td>
+                                      <td className="p-4 text-right text-zinc-500 font-mono">¥ {rawCost}</td>
+                                      <td className="p-4 text-right text-sky-400 font-extrabold font-mono text-sm">¥ {p.price}</td>
+                                      <td className="p-4 text-right text-white font-mono font-bold">{p.stock} 件</td>
+                                      <td className="p-4 text-right">
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-[8.5px] font-mono font-bold border transition-colors ${
+                                          p.stock > 100 
+                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                            : p.stock > 0 
+                                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse' 
+                                              : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                        }`}>
+                                          <span className="w-1 h-1 rounded-full bg-current mr-1 animate-pulse" />
+                                          {p.stock > 100 ? '在轨充足' : p.stock > 0 ? '库存偏低' : '售罄断货'}
+                                        </span>
+                                      </td>
+                                      <td className="p-4 text-center">
+                                        <div className="flex justify-center items-center gap-3">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setEditingProductId(p.id);
+                                              setEditingName(p.name);
+                                              setEditingPrice(p.price);
+                                              setEditingStock(p.stock);
+                                              setEditingImage(p.image);
+                                              triggerToast(`已调入 SPU 【${p.name}】 规格档案`);
+                                            }}
+                                            className="text-[#38BDF8] hover:text-[#1D9BF0] font-bold text-[11px] underline underline-offset-2 transition-colors flex items-center space-x-1 cursor-pointer"
+                                          >
+                                            📝 编辑详情
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              deleteDoc(doc(db, 'tenants', tenantId, 'industries', industry.id, 'products', p.id))
+                                                .then(() => {
+                                                  setLogs((prev) => [
+                                                    ...prev,
+                                                    {
+                                                      id: Math.random().toString(),
+                                                      timestamp: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+                                                      sender: '商户总控',
+                                                      emoji: '🗑',
+                                                      message: `✔ 商品【${p.name}】已成功下架封存，销毁其在售 SPU/SKU 档案，已实时同步至 Firestore。`,
+                                                      type: 'info'
+                                                    }
+                                                  ]);
+                                                  triggerToast(`🗑 商品 【${p.name}】 已成功下架并冷冻`, 'info');
+                                                })
+                                                .catch(err => {
+                                                  triggerToast('删除操作失败', 'error');
+                                                  handleFirestoreError(err, OperationType.DELETE, `tenants/${tenantId}/industries/${industry.id}/products/${p.id}`);
+                                                });
+                                            }}
+                                            className="text-red-500 hover:text-red-400 font-bold text-[11px] underline underline-offset-2 transition-colors flex items-center space-x-1 cursor-pointer"
+                                          >
+                                            🗑 下架冷冻
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </motion.tr>
+                                  );
+                                })}
+                              </AnimatePresence>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
 
-                  {/* Active Products Tables Grid */}
-                  <div className="bg-[#09090B] border border-[#2F3336] rounded-xl overflow-hidden">
-                    <div className="bg-[#0d0d0f] border-b border-[#2F3336] px-4 py-3 flex items-center justify-between">
-                      <span className="text-xs font-mono text-[#8B949E] uppercase tracking-wider">在售商品</span>
-                      <span className="text-[10px] text-zinc-400 font-mono">共 {productsList.length} 款在线</span>
-                    </div>
+                      {/* Right-Side Drawer Panel overlay container for edit product */}
+                      <AnimatePresence>
+                        {editingProductId !== null && (() => {
+                          const p = productsList.find(x => x.id === editingProductId);
+                          if (!p) return null;
+                          const marginPercent = editingPrice > 0 ? (((editingPrice - editingPrice * 0.42) / editingPrice) * 100).toFixed(0) : 0;
+                          return (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end text-left"
+                            >
+                              <motion.div
+                                initial={{ x: '100%' }}
+                                animate={{ x: 0 }}
+                                exit={{ x: '100%', transition: { type: 'spring', damping: 25, stiffness: 200 } }}
+                                className="w-full max-w-md bg-[#0D0D10] border-l border-[#2F3336] p-6 h-full overflow-y-auto space-y-6 flex flex-col shadow-2xl justify-between"
+                              >
+                                {/* Header section */}
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between border-b border-[#2F3336]/60 pb-4">
+                                    <div className="space-y-0.5" style={{ textAlign: 'left' }}>
+                                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                                        <span className="text-[#1D9BF0]">📝</span> SPU 大单品参数精微修正
+                                      </h4>
+                                      <p className="text-[10px] text-zinc-500 font-mono">FIRESTORE IDENTIFIER: {p.id}</p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingProductId(null)}
+                                      className="w-8 h-8 rounded-full bg-zinc-900 border border-[#2F3336] text-zinc-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
 
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs font-mono">
-                        <thead className="bg-[#0c0c0e] text-[#8B949E] uppercase text-[9px] border-b border-[#2F3336]">
-                          <tr>
-                            <th className="p-3">视觉</th>
-                            <th className="p-3">商品品名</th>
-                            <th className="p-3 text-right">上游进价</th>
-                            <th className="p-3 text-right">智能定价</th>
-                            <th className="p-3 text-right">常态在售库存</th>
-                            <th className="p-3 text-right">安全周转度</th>
-                            <th className="p-3 text-center">操作管理</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#2F3336]/40">
-                          {productsList.map((p) => {
-                            const isEditing = editingProductId === p.id;
-                            const rawCost = (isEditing ? editingPrice * 0.42 : p.price * 0.42).toFixed(2);
-                            return (
-                              <tr key={p.id} className="hover:bg-neutral-900/40 transition-colors">
-                                {isEditing ? (
-                                  <>
-                                    <td className="p-3">
-                                      <select
-                                        value={editingImage}
-                                        onChange={(e) => setEditingImage(e.target.value)}
-                                        className="bg-black border border-[#2F3336] rounded px-1.5 py-1 text-xs text-white text-base focus:outline-none"
-                                      >
+                                  {/* Cloud connection ready element */}
+                                  <div className="bg-[#101F18] border border-emerald-500/20 px-3 py-2.5 rounded-lg flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                      <span className="relative flex h-1.5 w-1.5 animate-pulse">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                                      </span>
+                                      <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wide">Live Multi-Terminal Cloud Synced</span>
+                                    </div>
+                                    <span className="text-[8.5px] font-mono bg-zinc-900 border border-[#2F3336] text-zinc-400 px-1.5 py-0.5 rounded">STREAM: OK</span>
+                                  </div>
+
+                                  {/* Field editors */}
+                                  <div className="space-y-4 text-left">
+                                    <div className="space-y-1.5">
+                                      <label className="text-[10px] font-mono text-zinc-400 block font-bold uppercase tracking-wider">选择象征性视觉图标</label>
+                                      <div className="grid grid-cols-5 gap-1.5 p-2 bg-black/60 border border-[#2F3336] rounded-xl max-h-40 overflow-y-auto">
                                         {[
                                           '🍛', '🍖', '🍹', '🍔', '🍕', '🍰', '🍜', '🍣',
                                           '👗', '👖', '👕', '👚', '👜', '🕶', '👠', '👟',
                                           '🎒', '🌀', '☔', '📦', '🎁', '📱', '💻', '💡', '🔥'
                                         ].map(em => (
-                                          <option key={em} value={em}>{em}</option>
+                                          <button
+                                            key={em}
+                                            type="button"
+                                            onClick={() => setEditingImage(em)}
+                                            className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all ${
+                                              editingImage === em
+                                                ? 'bg-[#1D9BF0]/20 border border-[#1D9BF0] scale-110 text-white font-bold'
+                                                : 'bg-zinc-900/30 border border-transparent hover:bg-zinc-800/40 text-zinc-400'
+                                            }`}
+                                          >
+                                            {em}
+                                          </button>
                                         ))}
-                                      </select>
-                                    </td>
-                                    <td className="p-3">
+                                      </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-mono text-zinc-400 block font-bold uppercase tracking-wider">商品名称 SPU TITLE</label>
                                       <input
                                         type="text"
                                         value={editingName}
                                         onChange={(e) => setEditingName(e.target.value)}
-                                        className="w-full bg-black border border-[#2F3336] focus:border-[#1D9BF0] rounded px-2.5 py-1.5 text-xs text-white focus:outline-none"
-                                        maxLength={60}
+                                        className="w-full bg-black border border-[#2F3336] text-white focus:outline-none focus:border-[#1D9BF0] rounded-lg px-3 py-2.5 text-xs font-sans font-boldBox"
+                                        style={{ backgroundColor: 'black', color: 'white' }}
+                                        placeholder="请输入大单品中文名称..."
+                                        maxLength={65}
                                       />
-                                    </td>
-                                    <td className="p-3 text-right text-gray-500">¥ {rawCost}</td>
-                                    <td className="p-3 text-right">
-                                      <input
-                                        type="number"
-                                        value={editingPrice}
-                                        min="0"
-                                        step="0.01"
-                                        onChange={(e) => setEditingPrice(parseFloat(e.target.value) || 0)}
-                                        className="w-24 bg-black border border-[#2F3336] focus:border-[#1D9BF0] rounded px-2 py-1 text-xs text-white text-right focus:outline-none font-mono"
-                                      />
-                                    </td>
-                                    <td className="p-3 text-right">
-                                      <input
-                                        type="number"
-                                        value={editingStock}
-                                        min="0"
-                                        onChange={(e) => setEditingStock(parseInt(e.target.value) || 0)}
-                                        className="w-24 bg-black border border-[#2F3336] focus:border-[#1D9BF0] rounded px-2 py-1 text-xs text-white text-right focus:outline-none font-mono"
-                                      />
-                                    </td>
-                                    <td className="p-3 text-right">
-                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] bg-sky-500/10 text-sky-400 border border-sky-500/20 font-bold">
-                                        正在修改
-                                      </span>
-                                    </td>
-                                    <td className="p-3 text-center">
-                                      <div className="flex justify-center items-center gap-1.5">
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            if (!editingName.trim()) return;
-                                            // Save to Firestore
-                                            setDoc(doc(db, 'tenants', tenantId, 'industries', industry.id, 'products', p.id), {
-                                              ...p,
-                                              name: editingName.trim(),
-                                              price: editingPrice,
-                                              stock: editingStock,
-                                              image: editingImage
-                                            })
-                                              .then(() => {
-                                                setLogs((prev) => [
-                                                  ...prev,
-                                                  {
-                                                    id: Math.random().toString(),
-                                                    timestamp: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
-                                                    sender: '商户总控',
-                                                    emoji: '🔧',
-                                                    message: `✔ SPU商品规格及价格档案【${editingName.trim()}】修改成功，价格定价 ¥${editingPrice}，库存 ${editingStock} 件。已在 Firestore 数据库实时同步生效！`,
-                                                    type: 'success'
-                                                  }
-                                                ]);
-                                              })
-                                              .catch(err => handleFirestoreError(err, OperationType.WRITE, `tenants/${tenantId}/industries/${industry.id}/products/${p.id}`));
-                                            setEditingProductId(null);
-                                          }}
-                                          className="bg-[#1D9BF0] hover:bg-[#38BDF8] text-white px-2 py-1 rounded text-[11px] font-semibold transition-all cursor-pointer"
-                                        >
-                                          保存
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => setEditingProductId(null)}
-                                          className="bg-zinc-800 hover:bg-zinc-700 text-gray-300 px-2 py-1 rounded text-[11px] transition-all cursor-pointer"
-                                        >
-                                          取消
-                                        </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="space-y-1">
+                                        <label className="text-[10px] font-mono text-zinc-400 block font-bold uppercase tracking-wider">在售单价 PRICING (¥)</label>
+                                        <input
+                                          type="number"
+                                          value={editingPrice}
+                                          step="0.01"
+                                          min="0"
+                                          onChange={(e) => setEditingPrice(parseFloat(e.target.value) || 0)}
+                                          className="w-full bg-black border border-[#2F3336] text-[#38BDF8] focus:outline-none focus:border-[#1D9BF0] rounded-lg px-3 py-2.5 text-xs font-mono font-bold text-right"
+                                        />
                                       </div>
-                                    </td>
-                                  </>
-                                ) : (
-                                  <>
-                                    <td className="p-3 text-base">{p.image}</td>
-                                    <td className="p-3 font-bold text-white">{p.name}</td>
-                                    <td className="p-3 text-right text-gray-500">¥ {rawCost}</td>
-                                    <td className="p-3 text-right text-sky-400 font-bold">¥ {p.price}</td>
-                                    <td className="p-3 text-right text-white font-mono">{p.stock} 件</td>
-                                    <td className="p-3 text-right">
-                                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold border ${
-                                        p.stock > 100 
-                                          ? 'bg-emerald-500/10 text-sky-400 border-sky-500/20' 
-                                          : p.stock > 0 
-                                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
-                                            : 'bg-red-500/10 text-red-500 border-red-500/20'
-                                      }`}>
-                                        {p.stock > 100 ? '在轨充足' : p.stock > 0 ? '少量存货' : '售罄补货'}
-                                      </span>
-                                    </td>
-                                    <td className="p-3 text-center">
-                                      <div className="flex justify-center items-center gap-3">
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setEditingProductId(p.id);
-                                            setEditingName(p.name);
-                                            setEditingPrice(p.price);
-                                            setEditingStock(p.stock);
-                                            setEditingImage(p.image);
-                                          }}
-                                          className="text-[#38BDF8] hover:text-[#1D9BF0] hover:underline cursor-pointer"
-                                        >
-                                          编辑
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            deleteDoc(doc(db, 'tenants', tenantId, 'industries', industry.id, 'products', p.id))
-                                              .then(() => {
-                                                setLogs((prev) => [
-                                                  ...prev,
-                                                  {
-                                                    id: Math.random().toString(),
-                                                    timestamp: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
-                                                    sender: '商户总控',
-                                                    emoji: '🗑',
-                                                    message: `✔ 商品【${p.name}】已成功下架封存，销毁其在售 SPU/SKU 档案，已实时同步至 Firestore。`,
-                                                    type: 'info'
-                                                  }
-                                                ]);
-                                              })
-                                              .catch(err => handleFirestoreError(err, OperationType.DELETE, `tenants/${tenantId}/industries/${industry.id}/products/${p.id}`));
-                                          }}
-                                          className="text-red-500 hover:text-red-400 hover:underline cursor-pointer"
-                                        >
-                                          删除
-                                        </button>
+                                      <div className="space-y-1">
+                                        <label className="text-[10px] font-mono text-zinc-400 block font-bold uppercase tracking-wider">在售库存 STOCK (件)</label>
+                                        <input
+                                          type="number"
+                                          value={editingStock}
+                                          min="0"
+                                          onChange={(e) => setEditingStock(parseInt(e.target.value) || 0)}
+                                          className="w-full bg-black border border-[#2F3336] text-white focus:outline-none focus:border-[#1D9BF0] rounded-lg px-3 py-2.5 text-xs font-mono font-bold text-right"
+                                        />
                                       </div>
-                                    </td>
-                                  </>
-                                )}
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                    </div>
+
+                                    {/* Cost meter margin indicator */}
+                                    <div className="bg-[#08080A] border border-[#2F3336] p-3 rounded-xl space-y-3">
+                                      <div className="flex items-center justify-between text-[11px] font-mono">
+                                        <span className="text-zinc-500">上游链条分销进价 (成本率42%):</span>
+                                        <span className="text-[#38BDF8] font-bold">¥ {(editingPrice * 0.42).toFixed(2)}</span>
+                                      </div>
+                                      <div className="w-full bg-zinc-900 border border-zinc-800/80 h-2.5 rounded-full overflow-hidden">
+                                        <div 
+                                          className="bg-gradient-to-r from-[#1D9BF0] to-emerald-400 h-full rounded-full transition-all duration-300"
+                                          style={{ width: `${marginPercent}%` }}
+                                        />
+                                      </div>
+                                      <div className="flex items-center justify-between text-[10px] text-zinc-400 font-mono">
+                                        <span>物配与供应损耗: 42%</span>
+                                        <span>预测扣除毛利比: <strong className="text-emerald-400">{marginPercent}%</strong></span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Drawer footer action buttons */}
+                                <div className="border-t border-[#2F3336]/60 pt-4 flex gap-3 text-xs font-bold font-sans">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingProductId(null)}
+                                    className="flex-1 py-3 bg-zinc-900 hover:bg-zinc-800 border border-[#2F3336] text-zinc-300 rounded-xl transition-all cursor-pointer"
+                                  >
+                                    取消
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (!editingName.trim()) {
+                                        triggerToast('大单品名称不能为空！', 'error');
+                                        return;
+                                      }
+                                      setDoc(doc(db, 'tenants', tenantId, 'industries', industry.id, 'products', p.id), {
+                                        ...p,
+                                        name: editingName.trim(),
+                                        price: editingPrice,
+                                        stock: editingStock,
+                                        image: editingImage
+                                      })
+                                        .then(() => {
+                                          setLogs((prev) => [
+                                            ...prev,
+                                            {
+                                              id: Math.random().toString(),
+                                              timestamp: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+                                              sender: '商户总控',
+                                              emoji: '🔧',
+                                              message: `✔ SPU商品规格及价格档案【${editingName.trim()}】修改成功，价格定价 ¥${editingPrice}，库存 ${editingStock} 件。已在 Firestore 数据库实时同步生效！`,
+                                              type: 'success'
+                                            }
+                                          ]);
+                                          triggerToast(`📝 【${editingName.trim()}】 商品参数同步保存成功！`, 'success');
+                                        })
+                                        .catch(err => {
+                                          triggerToast('写入数据库出错', 'error');
+                                          handleFirestoreError(err, OperationType.WRITE, `tenants/${tenantId}/industries/${industry.id}/products/${p.id}`);
+                                        });
+                                      setEditingProductId(null);
+                                    }}
+                                    className="flex-1 py-3 bg-[#1D9BF0] hover:bg-[#38BDF8] text-white rounded-xl transition-all shadow-md shadow-[#1D9BF0]/10 cursor-pointer"
+                                  >
+                                    安全写入云数据库
+                                  </button>
+                                </div>
+                              </motion.div>
+                            </motion.div>
+                          );
+                        })()}
+                      </AnimatePresence>
                     </div>
-                  </div>
-                </div>
-              )}
+                  )}
 
               {/* Categories Management view */}
               {productSubTab === 'categories' && (
@@ -4894,65 +5179,213 @@ const handleRestoreFromDrive = async () => {
 
               {/* SKU Management View */}
               {productSubTab === 'sku' && (
-                <div className="bg-[#09090B] border border-[#2F3336] p-6 rounded-xl space-y-6 animate-fadeIn text-left">
-                  <div>
-                    <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-                      <span className="text-sky-400">🎟</span>
-                      <span>多规格 SKU 智能销售矩阵设置</span>
-                    </h3>
-                    <p className="text-[10px] text-zinc-500 mt-1">选中大单品级 SPU，配置旗下多规格子属性变体（如不同尺码配特定色系的单独售价与独立持货盘仓）。</p>
+                <div className="bg-[#09090B] border border-[#2F3336] p-6 rounded-xl space-y-6 animate-fadeIn text-left relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-36 h-36 bg-[#1D9BF0]/5 blur-3xl rounded-full pointer-events-none" />
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2F3336]/60 pb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                        <span className="text-[#1D9BF0]">🎟</span>
+                        <span>多规格 SKU 智能销售矩阵设置</span>
+                      </h3>
+                      <p className="text-[10px] text-zinc-500 mt-1">
+                        选中大单品级 SPU，配置旗下多规格子属性变体（如不同尺寸配备特定色系的单独定价与仓库独立持货盘仓）。
+                      </p>
+                    </div>
+                    {/* Database connection indicator */}
+                    <div className="flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full text-[10px]">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                      </span>
+                      <span className="font-mono text-emerald-400 font-bold uppercase tracking-wide">Firebase SPU/SKU Active</span>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-6 font-sans">
-                    {/* Selector of product catalog */}
-                    <div className="md:col-span-12 lg:col-span-5 bg-black/40 border border-[#2F3336] p-4 rounded-xl space-y-4">
-                      <div className="space-y-1.5 font-sans">
-                        <label className="text-[11px] font-mono text-zinc-400 block font-bold">🎯 选择对应主体商品 SPU</label>
-                        <select
-                          value={selectedProductSkuUid}
-                          onChange={(e) => setSelectedProductSkuUid(e.target.value)}
-                          className="w-full bg-[#111] border border-neutral-700 rounded-lg p-2 text-xs text-white focus:outline-none"
-                        >
-                          <option value="">-- 请选择关联商品 --</option>
-                          {productsList.map(p => (
-                            <option key={p.id} value={p.id}>{p.image} {p.name} (ID: {p.id})</option>
-                          ))}
-                        </select>
+                    {/* Left Panel: Selector and generators */}
+                    <div className="md:col-span-12 lg:col-span-5 space-y-4">
+                      
+                      {/* Select corresponding parent SPU */}
+                      <div className="bg-black/40 border border-[#2F3336] p-4 rounded-xl space-y-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-mono tracking-wider uppercase text-[#8B949E] block font-bold">🎯 对应主体商品 SPU</label>
+                          <select
+                            value={selectedProductSkuUid}
+                            onChange={(e) => {
+                              setSelectedProductSkuUid(e.target.value);
+                              triggerToast(`调取 SPU 子规格列表`);
+                            }}
+                            className="w-full bg-[#0D0D10] border border-[#2F3336] rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[#1D9BF0]"
+                          >
+                            <option value="">-- 请选择关联主体商品 --</option>
+                            {productsList.map(p => (
+                              <option key={p.id} value={p.id}>{p.image} {p.name} (ID: {p.id})</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
 
+                      {/* Selector Quick Permutations Generation */}
+                      {selectedProductSkuUid && (
+                        <div className="bg-zinc-950 p-4 rounded-xl border border-dashed border-[#2F3336]/60 space-y-4 font-sans">
+                          <div>
+                            <span className="text-[10px] font-bold text-[#1D9BF0] font-mono uppercase tracking-wider block">✙ 智造规格交互面板 (Smart Specifications Builder)</span>
+                            <span className="text-[9px] text-[#8B949E] block mt-0.5">点击选项，一键自动构建笛卡尔积交叉属性组</span>
+                          </div>
+
+                          {/* Quick sizes selector */}
+                          <div className="space-y-1.5 text-left font-sans">
+                            <span className="text-[9px] font-mono text-[#8B949E] uppercase block font-bold">标准尺寸 / 包装 / 容量</span>
+                            <div className="flex flex-wrap gap-1">
+                              {(industry.id === 'catering' ? ['杯装', '提包装', '小号', '标准款', '冷藏装'] : ['XS', 'S', 'M', 'L', 'XL', 'XXL', '单件套', '独立包装']).map(size => {
+                                const selected = selectedQuickSizes.includes(size);
+                                return (
+                                  <button
+                                    key={size}
+                                    type="button"
+                                    onClick={() => {
+                                      if (selected) {
+                                        setSelectedQuickSizes(prev => prev.filter(s => s !== size));
+                                      } else {
+                                        setSelectedQuickSizes(prev => [...prev, size]);
+                                      }
+                                    }}
+                                    className={`px-2 py-1 rounded text-[10px] font-mono transition-all ${
+                                      selected 
+                                        ? 'bg-[#1D9BF0]/20 border border-[#1D9BF0] text-white font-bold' 
+                                        : 'bg-zinc-900 border border-transparent text-zinc-400 hover:bg-zinc-800'
+                                    }`}
+                                  >
+                                    {size}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Quick colors/specifications selector */}
+                          <div className="space-y-1.5 text-left font-sans">
+                            <span className="text-[9px] font-mono text-[#8B949E] uppercase block font-bold">颜色风味 / 核心特征 / 材质</span>
+                            <div className="flex flex-wrap gap-1">
+                              {(industry.id === 'catering' ? ['经典风味', '低卡无糖', '常温推荐', '加浓定制'] : ['玄黑 Black', '霜白 White', '黛蓝 Blue', '经典浅灰', '太空银 Plt']).map(color => {
+                                const selected = selectedQuickColors.includes(color);
+                                return (
+                                  <button
+                                    key={color}
+                                    type="button"
+                                    onClick={() => {
+                                      if (selected) {
+                                        setSelectedQuickColors(prev => prev.filter(c => c !== color));
+                                      } else {
+                                        setSelectedQuickColors(prev => [...prev, color]);
+                                      }
+                                    }}
+                                    className={`px-2 py-1 rounded text-[10px] font-mono transition-all ${
+                                      selected 
+                                        ? 'bg-[#1D9BF0]/20 border border-[#1D9BF0] text-white font-bold' 
+                                        : 'bg-zinc-900 border border-transparent text-zinc-400 hover:bg-zinc-800'
+                                    }`}
+                                  >
+                                    {color}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Pricing and Stock and perm builder trigger */}
+                          <div className="space-y-3 pt-2.5 border-t border-[#2F3336]/40 text-left font-sans">
+                            <div className="grid grid-cols-2 gap-2 text-[10px]">
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] text-[#8B949E] block font-semibold">定价 (¥)</span>
+                                <input
+                                  type="number"
+                                  value={bulkSkuPrice}
+                                  onChange={(e) => setBulkSkuPrice(e.target.value)}
+                                  className="w-full bg-black border border-neutral-700 rounded p-1.5 text-xs text-white focus:outline-none font-mono"
+                                />
+                              </div>
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] text-[#8B949E] block font-semibold">初始高配库存 (件)</span>
+                                <input
+                                  type="number"
+                                  value={bulkSkuStock}
+                                  onChange={(e) => setBulkSkuStock(e.target.value)}
+                                  className="w-full bg-black border border-neutral-700 rounded p-1.5 text-xs text-white focus:outline-none font-mono"
+                                />
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (selectedQuickSizes.length === 0 || selectedQuickColors.length === 0) {
+                                  triggerToast('请至少各勾选一个物理尺寸和材质/颜色！', 'error');
+                                  return;
+                                }
+                                const writePromises = [];
+                                let count = 0;
+                                for (const sz of selectedQuickSizes) {
+                                  for (const cl of selectedQuickColors) {
+                                    const name = `尺寸: ${sz} | 属性: ${cl}`;
+                                    const ref = doc(collection(db, 'tenants', tenantId, 'industries', industry.id, 'products', selectedProductSkuUid, 'skus'));
+                                    writePromises.push(setDoc(ref, {
+                                      name,
+                                      price: Number(bulkSkuPrice) || 199,
+                                      stock: Number(bulkSkuStock) || 100,
+                                      createdAt: Date.now()
+                                    }));
+                                    count++;
+                                  }
+                                }
+                                await Promise.all(writePromises);
+                                triggerToast(`成功自动笛卡尔积打包生成 ${count} 款 SKU 规格至云数据库！`, 'success');
+                                setSelectedQuickSizes([]);
+                                setSelectedQuickColors([]);
+                              }}
+                              className="w-full bg-gradient-to-r from-[#1D9BF0] to-[#38BDF8] hover:opacity-90 active:scale-95 text-white font-extrabold text-[10.5px] py-2.5 rounded-lg border border-sky-400/20 transition-all cursor-pointer text-center"
+                            >
+                              ⚡ 1键生成属性对并提交云库 ({selectedQuickSizes.length * selectedQuickColors.length} 属性组合对)
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Manual SKU Form */}
                       <div className="bg-black/60 p-3 rounded-lg border border-[#2F3336]/60 space-y-3.5 text-xs font-sans">
-                        <span className="font-bold text-zinc-300 block font-sans">✙ 注册全新 SKU 变体信息</span>
+                        <span className="font-bold text-zinc-300 block font-sans">✙ 手动注册单条 SKU 变体信息</span>
                         
-                        <div className="space-y-2 font-sans">
+                        <div className="space-y-2 font-sans text-left">
                           <div className="space-y-0.5">
-                            <label className="text-[9px] text-[#8B949E] uppercase tracking-wider font-mono">子规格名称 (如-尺寸: S | 颜色: 玄黑)</label>
+                            <label className="text-[9px] text-[#8B949E] uppercase tracking-wider font-mono">子规格名称 (如 - 尺寸: S | 颜色: 玄黑)</label>
                             <input
                               type="text"
                               value={newSkuVariantName}
                               onChange={(e) => setNewSkuVariantName(e.target.value)}
                               placeholder="尺寸: XXL | 颜色: 青瓦"
-                              className="w-full bg-black border border-neutral-700 rounded p-1.5 text-xs text-white focus:outline-none"
+                              className="w-full bg-black border border-neutral-700 focus:border-[#1D9BF0] rounded p-2 text-xs text-white focus:outline-none font-sans"
                             />
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-0.5 font-sans">
-                              <label className="text-[9px] text-[#8B949E] font-mono">售价 ¥</label>
+                              <label className="text-[9px] text-[#8B949E] font-sans font-bold">售价 ¥</label>
                               <input
                                 type="number"
                                 value={newSkuVariantPrice}
                                 onChange={(e) => setNewSkuVariantPrice(e.target.value)}
                                 placeholder="219"
-                                className="w-full bg-black border border-neutral-700 rounded p-1.5 text-xs text-white focus:outline-none font-mono"
+                                className="w-full bg-black border border-neutral-700 focus:border-[#1D9BF0] rounded p-2 text-xs text-white focus:outline-none font-mono text-left"
                               />
                             </div>
                             <div className="space-y-0.5 font-sans">
-                              <label className="text-[9px] text-[#8B949E] font-mono">单独库存</label>
+                              <label className="text-[9px] text-[#8B949E] font-sans font-bold">单独库存</label>
                               <input
                                 type="number"
                                 value={newSkuVariantStock}
                                 onChange={(e) => setNewSkuVariantStock(e.target.value)}
                                 placeholder="50"
-                                className="w-full bg-black border border-neutral-700 rounded p-1.5 text-xs text-white focus:outline-none font-mono"
+                                className="w-full bg-black border border-neutral-700 focus:border-[#1D9BF0] rounded p-2 text-xs text-white focus:outline-none font-mono text-left"
                               />
                             </div>
                           </div>
@@ -4962,25 +5395,31 @@ const handleRestoreFromDrive = async () => {
                           type="button"
                           onClick={() => {
                             if (!selectedProductSkuUid) {
-                              alert('请先选择要关联的商品 SPU 主体！');
+                              triggerToast('请先选择要关联的商品 SPU 主体！', 'error');
                               return;
                             }
                             if (!newSkuVariantName.trim() || !newSkuVariantPrice || !newSkuVariantStock) {
-                              alert('请输入完整的变体子规格名、售价及独立库存！');
+                              triggerToast('请输入完整的变体子规格名、售价及独立库存！', 'error');
                               return;
                             }
-                            const variantObj = {
+                            const ref = doc(collection(db, 'tenants', tenantId, 'industries', industry.id, 'products', selectedProductSkuUid, 'skus'));
+                            setDoc(ref, {
                               name: newSkuVariantName.trim(),
                               price: Number(newSkuVariantPrice),
-                              stock: Number(newSkuVariantStock)
-                            };
-                            setSkuVariants(prev => [...prev, variantObj]);
-                            setNewSkuVariantName('');
-                            setNewSkuVariantPrice('');
-                            setNewSkuVariantStock('');
-                            alert('SKU变体子类注册成功，本变存盘已加入下方 SKU 规格池！');
+                              stock: Number(newSkuVariantStock),
+                              createdAt: Date.now()
+                            })
+                              .then(() => {
+                                triggerToast(`✔ 子规格 [${newSkuVariantName}] 成功写入云柜 SPU！`);
+                                setNewSkuVariantName('');
+                                setNewSkuVariantPrice('');
+                                setNewSkuVariantStock('');
+                              })
+                              .catch(err => {
+                                handleFirestoreError(err, OperationType.WRITE, `skuVariantsUnderSPU`);
+                              });
                           }}
-                          className="w-full bg-[#1D9BF0] hover:bg-sky-450 text-white font-extrabold text-[10.5px] py-2 rounded-lg cursor-pointer"
+                          className="w-full bg-[#1D9BF0] hover:bg-[#38BDF8] active:scale-95 text-white font-extrabold text-[10.5px] py-2.5 rounded-lg cursor-pointer transition-all text-center"
                         >
                           创建并追加列 SKU 变体
                         </button>
@@ -4988,48 +5427,74 @@ const handleRestoreFromDrive = async () => {
                     </div>
 
                     {/* Renders list of current variant options for chosen product */}
-                    <div className="md:col-span-12 lg:col-span-7 bg-black/20 border border-[#2F3336] p-4 rounded-xl space-y-4 font-sans">
-                      <span className="text-xs font-bold text-zinc-300 block">📊 关联子条目 SKU 网格列表</span>
+                    <div className="md:col-span-12 lg:col-span-7 bg-black/20 border border-[#2F3336] p-4 rounded-xl space-y-4 font-sans max-h-[600px] overflow-y-auto">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-zinc-300 block">📊 关联子条目 SKU 网格列表</span>
+                        <span className="text-[9px] text-[#8B949E] font-mono">数量：{skuVariants.length}个活跃变体</span>
+                      </div>
+
                       {selectedProductSkuUid ? (
                         <div className="overflow-x-auto">
-                          <table className="w-full text-[10px] font-mono text-zinc-450 border-collapse">
+                          <table className="w-full text-[10.5px] font-mono text-zinc-400 border-collapse">
                             <thead>
-                              <tr className="border-b border-[#2F3336] text-zinc-500 whitespace-nowrap">
+                              <tr className="border-b border-[#2F3336]/60 text-zinc-500 font-bold whitespace-nowrap uppercase text-[8.5px] font-mono">
                                 <th className="pb-2 text-left">SKU属性组合</th>
-                                <th className="pb-2 text-left">单体定价</th>
-                                <th className="pb-2 text-left">独立仓库盘余</th>
-                                <th className="pb-2 text-left">运行权标</th>
-                                <th className="pb-2 text-center">控制</th>
+                                <th className="pb-2 text-right">单体定价</th>
+                                <th className="pb-2 text-right">独立库存盘余</th>
+                                <th className="pb-2 text-center">状态运行</th>
+                                <th className="pb-2 text-center">控制操作</th>
                               </tr>
                             </thead>
-                            <tbody>
-                              {skuVariants.map((variant, index) => (
-                                <tr key={index} className="border-b border-[#2F3336]/45 text-zinc-200">
-                                  <td className="py-2.5 font-bold text-white">{variant.name}</td>
-                                  <td className="py-2.5 text-sky-450 font-bold">¥ {variant.price}</td>
-                                  <td className="py-2.5 text-amber-500 font-bold">{variant.stock} 件</td>
-                                  <td className="py-2.5">
-                                    <span className="text-[8.5px] bg-emerald-500/10 text-emerald-450 border border-emerald-500/20 px-1.5 py-0.5 rounded">活跃受控</span>
-                                  </td>
-                                  <td className="py-2.5 text-center px-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setSkuVariants(prev => prev.filter((_, i) => i !== index));
-                                      }}
-                                      className="text-red-550 hover:text-red-400 hover:underline cursor-pointer"
-                                    >
-                                      剔除
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
+                            <tbody className="divide-y divide-[#2F3336]/30">
+                              <AnimatePresence>
+                                {skuVariants.map((variant, index) => (
+                                  <motion.tr 
+                                    key={variant.id || index} 
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0 }}
+                                    className="text-zinc-200 hover:bg-zinc-900/30 transition-colors"
+                                  >
+                                    <td className="py-2.5 font-bold text-white text-left">{variant.name}</td>
+                                    <td className="py-2.5 text-right text-[#3aebf8] font-bold">¥ {variant.price}</td>
+                                    <td className="py-2.5 text-right text-emerald-400 font-bold font-mono">{variant.stock} 件</td>
+                                    <td className="py-2.5 text-center">
+                                      {variant.isDefaultSeed ? (
+                                        <span className="text-[8px] bg-sky-500/10 text-sky-400 border border-sky-500/20 px-1.5 py-0.5 rounded font-bold">初始化样</span>
+                                      ) : (
+                                        <span className="text-[8px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold">真实云受控</span>
+                                      )}
+                                    </td>
+                                    <td className="py-2.5 text-center px-1">
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          if (variant.isDefaultSeed) {
+                                            // Directly filter local default array fallback if selected SPU hasn't written customized sub-skus yet
+                                            setSkuVariants(prev => prev.filter((_, i) => i !== index));
+                                            triggerToast('演示规格已从网格剥除 (仅限客户端)');
+                                            return;
+                                          }
+                                          if (variant.id) {
+                                            await deleteDoc(doc(db, 'tenants', tenantId, 'industries', industry.id, 'products', selectedProductSkuUid, 'skus', variant.id));
+                                            triggerToast('🗑 SKU子规格属性成功从云数据库下架', 'info');
+                                          }
+                                        }}
+                                        className="text-red-500 hover:text-red-400 font-bold hover:underline cursor-pointer"
+                                      >
+                                        剔除
+                                      </button>
+                                    </td>
+                                  </motion.tr>
+                                ))}
+                              </AnimatePresence>
                             </tbody>
                           </table>
                         </div>
                       ) : (
-                        <div className="p-8 text-center text-zinc-500 text-xs border border-dashed border-[#2F3336]/50 rounded-xl font-mono">
-                          👈 请在左侧选中某大单品 SPU 档案以调看 SKU 网格矩阵
+                        <div className="p-16 text-center text-zinc-500 text-xs border border-dashed border-[#2F3336]/50 rounded-xl font-mono flex flex-col items-center justify-center space-y-2">
+                          <span className="text-3xl">👈</span>
+                          <span className="text-[11px] font-sans">请在左侧选中某大单品 SPU 档案以调看 SKU 网格矩阵</span>
                         </div>
                       )}
                     </div>
