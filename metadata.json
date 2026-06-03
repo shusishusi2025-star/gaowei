@@ -1,0 +1,6 @@
+{
+  "name": "ModaUI",
+  "description": "一句话创建公司，AI团队立即上岗。选择行业，获得AI团队，开始经营。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
