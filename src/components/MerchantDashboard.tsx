@@ -357,6 +357,10 @@ export default function MerchantDashboard({
   const [testLog, setTestLog] = useState<string>('系统路由就绪。等待诊断通信连通性...');
   const [geminiConnected, setGeminiConnected] = useState<'online' | 'local'>('local');
 
+  const commonActionBtn = 'rounded-lg text-xs font-bold transition-all duration-150 cursor-pointer';
+  const fullWidthActionBtn = `${commonActionBtn} w-full py-3 border border-[#2F3336] bg-[#0B0B0D] hover:bg-[#111115] text-white`;
+  const primaryActionBtn = `${commonActionBtn} w-full py-3 bg-[#1D9BF0] hover:bg-[#38BDF8] text-white border border-[#1D9BF0]/20`;
+
   // Sub-navigation state selectors for secondary-level dashboard tabs
   const [storeSubTab, setStoreSubTab] = useState<'overview' | 'decoration' | 'domain' | 'brand' | 'seo'>('overview');
   const [productSubTab, setProductSubTab] = useState<'list' | 'categories' | 'inventory' | 'sku' | 'suppliers' | 'purchase'>('list');
@@ -6361,7 +6365,7 @@ const handleRestoreFromDrive = async () => {
                                 <button
                                   type="button"
                                   onClick={() => setOllamaSearchQuery('')}
-                                  className="absolute right-2.5 top-2.5 text-gray-500 hover:text-white"
+                                  className="absolute right-2.5 top-2.5 inline-flex items-center justify-center w-7 h-7 rounded-full text-gray-500 hover:text-white hover:bg-white/5 transition-colors"
                                 >
                                   <X className="w-3.5 h-3.5" />
                                 </button>
@@ -6392,8 +6396,8 @@ const handleRestoreFromDrive = async () => {
                                         setTestConnectionStatus('idle');
                                         setTestLog(`[模型自流转] 已完美切换本地高性能 LLM 为: ${modelName}。您可以直接在会商区进行推理对话测试！`);
                                       }}
-                                      className={`w-full text-left px-3 py-2 text-xs font-mono transition-colors duration-150 flex items-center justify-between hover:bg-[#111112] ${
-                                        isActive ? 'bg-[#1D9BF0]/15 text-white font-bold' : 'text-[#8B949E]'
+                                      className={`w-full text-left px-3 py-2 text-xs font-mono transition-colors duration-150 flex items-center justify-between rounded-lg border border-[#2F3336] ${
+                                        isActive ? 'bg-[#1D9BF0]/15 text-white font-bold' : 'text-[#8B949E] hover:bg-[#111112]'
                                       }`}
                                     >
                                       <div className="flex items-center space-x-2">
@@ -6440,7 +6444,7 @@ const handleRestoreFromDrive = async () => {
                                   setTestLog(`已注册模型【${cleaned}】`);
                                 }}
                                 disabled={!customOllamaModelInput.trim()}
-                                className="bg-[#1D9BF0] hover:bg-[#38BDF8] text-white text-xs px-3.5 py-2 rounded-lg font-bold transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                                className={`${primaryActionBtn} text-xs px-3.5 py-2 disabled:opacity-50 shrink-0`}
                               >
                                 快速注册
                               </button>
@@ -6490,7 +6494,7 @@ const handleRestoreFromDrive = async () => {
                           setTestLog(`❌ 通信失败。`);
                         }
                       }}
-                      className="w-full py-3 bg-neutral-900 border border-[#2F3336] hover:bg-neutral-800 text-xs font-bold text-white rounded-lg cursor-pointer flex items-center justify-center space-x-1"
+                      className={`${fullWidthActionBtn} flex items-center justify-center space-x-1`}
                     >
                       <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${testConnectionStatus === 'testing' ? 'animate-spin' : ''}`} />
                       <span>进行通信测试</span>
